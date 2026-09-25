@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+@import "./styles/glass.css";
+@import "./styles/transitions.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body { margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    overscroll-behavior-y: none;
+    background: transparent;
+    color: #0d1c2f;
+    -webkit-font-smoothing: antialiased;
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+  }
+  main > :first-child { margin-top: 0 !important; }
+  main > :last-child { margin-bottom: 0 !important; }
+  ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  * { scrollbar-width: none; }
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+@layer utilities {
+  /* Elements awaiting their scroll reveal start hidden, but only when JS is driving. */
+  [data-reveal], [data-reveal-group] > * { will-change: transform, opacity; }
+  .reveal-armed { opacity: 0; }
+
+  .shimmer-sweep {
+    background-image: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.65) 50%,
+      transparent 80%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 2.8s linear infinite;
+  }
+  @keyframes shimmer-sweep {
+    0%   { background-position: 180% 0; }
+    100% { background-position: -80% 0; }
+  }
+
+  .sun-pulse { animation: sun-pulse 3.2s ease-in-out infinite; }
+  @keyframes sun-pulse {
+    0%, 100% { opacity: 0.55; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.14); }
+  }
+
+  .ping-ring::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    animation: ping-ring 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @keyframes ping-ring {
+    0%   { transform: scale(1);   opacity: 0.7; }
+    100% { transform: scale(2.6); opacity: 0; }
+  }
+
+  .drift-slow { animation: drift 18s ease-in-out infinite alternate; }
+  @keyframes drift {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    100% { transform: translate3d(3%, -4%, 0) scale(1.12); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal-armed { opacity: 1 !important; }
+  .shimmer-sweep, .sun-pulse, .drift-slow, .ping-ring::after { animation: none !important; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,253 @@
+/**
+ * Liquid glass.
+ *
+ * The look comes from four layers stacked on one element, not a single blur: a
+ * translucent tint, a real backdrop blur with saturation lift, a bright inner
+ * top edge that reads as the lit rim of a thick pane, and a soft outer shadow
+ * that lifts the pane off the wallpaper behind it.
+ *
+ * Glass only works when there is something behind it, so these classes assume
+ * the Wallpaper layer is present.
+ *
+ * These are plain rules rather than `@layer components`: they set properties no
+ * Tailwind utility touches, so they never need to win a specificity fight, and
+ * relying on Tailwind to hoist a layer out of an imported file is a dependency
+ * with nothing to gain. This file is imported *before* the @tailwind directives,
+ * because a stylesheet's @import must precede every other rule or the browser
+ * discards the whole thing — which is exactly what happened the first time.
+ */
+
+.glass {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.72) 0%,
+    rgb(255 255 255 / 0.52) 45%,
+    rgb(245 249 255 / 0.62) 100%
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.6);
+  box-shadow:
+    0 10px 34px -12px rgb(13 28 47 / 0.22),
+    0 2px 8px -2px rgb(13 28 47 / 0.06),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+    inset 0 -1px 0 0 rgb(255 255 255 / 0.28);
+}
+
+/* Navigation panes have content sliding underneath them, so they have to
+   diffuse it rather than reveal it — hence the far higher tint and blur. */
+.glass-strong {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.94) 0%,
+    rgb(252 253 255 / 0.9) 50%,
+    rgb(245 249 255 / 0.92) 100%
+  );
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  box-shadow:
+    0 16px 48px -16px rgb(13 28 47 / 0.26),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.95);
+}
+
+/* Barely-there pane for chips and inline controls. */
+.glass-thin {
+  position: relative;
+  background: rgb(255 255 255 / 0.46);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.5);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.75);
+}
+
+/* Dark pane, for panels sitting on the navy sections. */
+.glass-dark {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.12) 0%,
+    rgb(255 255 255 / 0.05) 100%
+  );
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  box-shadow:
+    0 12px 40px -14px rgb(0 0 0 / 0.5),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.22);
+}
+
+/**
+ * Specular sweep — the highlight that sells "liquid" rather than "frosted".
+ * A slow diagonal band of light travels across the pane, then rests.
+ */
+.glass-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 32%,
+    rgb(255 255 255 / 0.38) 47%,
+    rgb(255 255 255 / 0.62) 50%,
+    rgb(255 255 255 / 0.38) 53%,
+    transparent 68%
+  );
+  background-size: 240% 100%;
+  background-position: 180% 0;
+  animation: glass-sheen 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes glass-sheen {
+  0%,
+  62% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -80% 0;
+  }
+}
+
+/**
+ * Cursor-tracked refraction: the pane brightens where the pointer is, as a
+ * thick lens would. --gx/--gy/--glow are written by <GlassPointer />.
+ */
+.glass-lens::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--glow, 0);
+  transition: opacity 0.35s ease;
+  background: radial-gradient(
+    420px circle at var(--gx, 50%) var(--gy, 50%),
+    rgb(255 255 255 / 0.55),
+    rgb(190 215 255 / 0.18) 38%,
+    transparent 66%
+  );
+}
+
+/* Lifts on hover, the way a physical pane catches more light. */
+.glass-hover {
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.glass-hover:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 56px -18px rgb(13 28 47 / 0.3),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.95);
+}
+
+/**
+ * Edge caustic — the bright hairline where light bends through the rim.
+ * It lives on ::after so it can coexist with the lens, which owns ::before;
+ * panes that also carry a sheen simply let the sheen win that slot.
+ */
+.glass-edge:not(.glass-sheen)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    140deg,
+    rgb(255 255 255 / 0.95),
+    rgb(255 255 255 / 0.1) 38%,
+    rgb(179 197 255 / 0.45) 62%,
+    rgb(255 255 255 / 0.85)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* ------------------------------------------------------------------ motion */
+/**
+ * Global micro-interactions, in CSS rather than Motion: they fire on hundreds
+ * of small elements, and giving every icon a React animation would cost far
+ * more than the effect is worth.
+ */
+.glass-hover .material-symbols-outlined,
+button .material-symbols-outlined,
+a .material-symbols-outlined {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.glass-hover:hover .material-symbols-outlined,
+button:hover .material-symbols-outlined,
+a:hover .material-symbols-outlined {
+  transform: scale(1.14);
+}
+
+button,
+a[class*="rounded-full"] {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+button:active,
+a[class*="rounded-full"]:active {
+  transform: scale(0.975);
+}
+
+:where(button, a, input, select):focus-visible {
+  outline: 2px solid #0050cc;
+  outline-offset: 2px;
+  animation: focus-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes focus-pop {
+  from {
+    outline-offset: 6px;
+    outline-color: rgb(0 80 204 / 0);
+  }
+}
+
+tbody tr {
+  transition: background-color 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-sheen::after {
+    animation: none;
+    opacity: 0.25;
+  }
+  .glass-hover:hover {
+    transform: none;
+  }
+  .glass-hover:hover .material-symbols-outlined,
+  button:hover .material-symbols-outlined,
+  a:hover .material-symbols-outlined {
+    transform: none;
+  }
+}
+
+/* Backdrop-filter is near-universal now, but without it these tints are far too
+   transparent to read, so thicken them when it is missing. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong,
+  .glass-thin {
+    background: rgb(255 255 255 / 0.93);
+  }
+  .glass-dark {
+    background: rgb(13 28 50 / 0.88);
+  }
+}

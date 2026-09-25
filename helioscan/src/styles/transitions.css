@@ -1,0 +1,126 @@
+/**
+ * Page morph transitions, built on the View Transitions API.
+ *
+ * Why this and not Motion: a shared-element morph needs the old and new DOM to
+ * exist at the same time so an element can be interpolated between two
+ * positions. AnimatePresence with mode="wait" unmounts the old page *before*
+ * mounting the new one, so `layoutId` has nothing to morph between; dropping
+ * mode="wait" instead leaves two full pages stacked in flow. The View
+ * Transitions API sidesteps both by snapshotting the old state, applying the
+ * DOM update, and animating between the two snapshots.
+ *
+ * React Router drives it: `<Link viewTransition>` wraps the navigation in
+ * document.startViewTransition(), and useViewTransitionState() tells a component
+ * when it is mid-flight so it can claim a view-transition-name. Names must be
+ * unique per snapshot, which is why they are applied conditionally rather than
+ * left on permanently.
+ */
+
+/* ---------------------------------------------------------------- the page */
+
+::view-transition-old(root) {
+  animation: vt-page-out 300ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+::view-transition-new(root) {
+  animation: vt-page-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes vt-page-out {
+  to {
+    opacity: 0;
+    transform: scale(0.988) translateY(-10px);
+    filter: blur(5px);
+  }
+}
+@keyframes vt-page-in {
+  from {
+    opacity: 0;
+    transform: scale(1.014) translateY(14px);
+    filter: blur(7px);
+  }
+}
+
+/* --------------------------------------------------------- persistent chrome
+   The header, wallpaper and progress bar are the same objects either side of a
+   navigation. Naming them keeps them out of the root snapshot, so they hold
+   still while the page morphs underneath instead of cross-fading with it. */
+
+header {
+  view-transition-name: app-header;
+}
+[data-wallpaper] {
+  view-transition-name: app-wallpaper;
+}
+
+::view-transition-old(app-header),
+::view-transition-new(app-header),
+::view-transition-old(app-wallpaper),
+::view-transition-new(app-wallpaper) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* ------------------------------------------------------- the shared elements
+   A card on /results and the report header on /report are the same site, so
+   they morph: the browser interpolates position, size and border-radius between
+   the two snapshots. The group holds the whole morph on one timing curve so the
+   card visibly travels rather than dissolving. */
+
+::view-transition-group(site-plate),
+::view-transition-group(site-title),
+::view-transition-group(site-score) {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The plate changes shape a lot between the two layouts, so cross-fade its
+   contents while the box itself morphs — otherwise the old card's interior is
+   visibly stretched across the new header. */
+::view-transition-old(site-plate) {
+  animation: vt-fade-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+::view-transition-new(site-plate) {
+  animation: vt-fade-in 380ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+/* Title and score keep the same shape, so let them ride the morph intact. */
+::view-transition-old(site-title),
+::view-transition-new(site-title),
+::view-transition-old(site-score),
+::view-transition-new(site-score) {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------ accessibility
+   A full-page morph is exactly the kind of motion that triggers vestibular
+   symptoms, so reduce it to a plain cross-fade rather than removing the
+   transition entirely (an instant swap is its own kind of disorienting). */
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: vt-fade-in 140ms linear both;
+  }
+  ::view-transition-old(root) {
+    animation-name: vt-fade-out;
+  }
+  ::view-transition-group(site-plate),
+  ::view-transition-group(site-title),
+  ::view-transition-group(site-score) {
+    animation-duration: 140ms;
+  }
+}

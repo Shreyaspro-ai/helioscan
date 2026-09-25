@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+dist-ssr/
+build/
+
+# caches
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Unrelated tooling logs that happen to live in this folder — not part of
+# this project.
+data/
+
+# local env / secrets (the app itself needs no keys, but never publish these)
+.env
+.env.*
+!.env.example
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
