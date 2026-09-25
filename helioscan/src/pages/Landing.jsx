@@ -133,9 +133,17 @@ export default function Landing() {
               </Parallax>
               {/* Right Visual Showcase / Dynamic Telemetry Preview Card */}
               <Parallax speed={0.14} className="lg:col-span-5 relative mt-space-lg lg:mt-0">
-                {/* Decorative coordinate watermark */}
-                <div className="absolute -top-6 -right-4 font-mono font-bold text-[60px] text-surface-container-high/40 select-none pointer-events-none -z-10">
-                  {" NREL:PV "}
+                {/* Decorative watermark from the source design. It sat at
+                    -top-6 -right-4, directly behind the card's "V4.2 SATELLITE"
+                    badge, where the two overlapped into something that read as
+                    a rendering fault rather than decoration. Moved clear of the
+                    card's top-right corner and softened so it behaves like a
+                    watermark. */}
+                <div
+                  aria-hidden
+                  className="absolute -top-11 right-16 font-mono font-bold text-[56px] leading-none tracking-tight text-surface-container-high/25 select-none pointer-events-none -z-10 hidden lg:block"
+                >
+                  NREL:PV
                 </div>
                 {/* The Floating Simulation Canvas Card */}
                 <div className="w-full glass glass-edge glass-lens glass-hover glass-sheen rounded-xl shadow-xl p-space-md sm:p-space-lg relative" data-reveal="">

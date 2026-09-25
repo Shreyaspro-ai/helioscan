@@ -8,6 +8,7 @@ import CountUp from "../components/CountUp";
 import { useSite } from "../state/SiteContext";
 import { rankLabel } from "../lib/solar";
 import { getCountry } from "../data/countries";
+import { downloadCsv, buildMatrixRows, slug } from "../lib/exportData";
 
 const EASE = [0.22, 1, 0.36, 1];
 
@@ -350,23 +351,12 @@ export default function Results() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  const rows = [
-                    ["Metric", ...sites.map((s) => `#${s.rank} ${s.parcelName}`)],
-                    ...METRICS.map((m) => [m.label, ...sites.map((s) => m.get(s))]),
-                  ];
-                  const csv = rows
-                    .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
-                    .join("\n");
-                  const url = URL.createObjectURL(
-                    new Blob([csv], { type: "text/csv;charset=utf-8" })
-                  );
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `helioscan-${(origin.label || "site").replace(/\W+/g, "-").toLowerCase()}.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
+                onClick={() =>
+                  downloadCsv(
+                    buildMatrixRows(sites, METRICS, origin),
+                    `helioscan-${slug(origin.postal || origin.area || origin.label)}-comparison`
+                  )
+                }
                 className="flex items-center gap-space-xs px-space-md py-2 rounded-full bg-surface-container-lowest text-on-surface font-label-md text-label-md shadow-sm hover:bg-surface-container transition-colors"
               >
                 <span className="material-symbols-outlined text-[17px] text-secondary">

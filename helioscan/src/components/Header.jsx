@@ -3,16 +3,18 @@ import { motion, useScroll, useMotionValueEvent } from "motion/react";
 import { useState } from "react";
 import ShinyText from "./ShinyText";
 import SunMark from "./SunMark";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useT } from "../i18n";
 
 const AVATAR =
   "https://lh3.googleusercontent.com/aida/AEtjO1UOAhHf-Ehx4DVILPRs890sZ9d6aGuY9qtlJRyPXlG_Gcf5myUAMWcds59rG_QAEKrO03uXaqERKgH4bWsIqY7PHmODTGzH98c4ZsjKfNqqxrgDE1r3hc9Ege4WFFS3jGRZTjZ5j64ms1bMkJUS3qWHwaZ2EO9GIhQHedVNH0QbMqBfnAfYRRxF021KGqPqsrcZO1ZYmTZYAZaSfZ0m8_bdji5jjfWUHLEgT7AvRjWhOwFZD_bM-cOkqd8";
 
 const LINKS = [
-  { to: "/", label: "Welcome / Home", end: true },
-  { to: "/find", label: "Find Locations" },
-  { to: "/results", label: "Results Overview" },
-  { to: "/report", label: "Detailed Report" },
-  { to: "/methodology", label: "Methodology" },
+  { to: "/", key: "nav.home", end: true },
+  { to: "/find", key: "nav.find" },
+  { to: "/results", key: "nav.results" },
+  { to: "/report", key: "nav.report" },
+  { to: "/methodology", key: "nav.methodology" },
 ];
 
 const EASE = [0.22, 1, 0.36, 1];
@@ -22,6 +24,7 @@ export default function Header() {
   const [condensed, setCondensed] = useState(false);
   const [hovered, setHovered] = useState(null);
   const location = useLocation();
+  const t = useT();
 
   useMotionValueEvent(scrollY, "change", (v) => setCondensed(v > 24));
 
@@ -54,7 +57,7 @@ export default function Header() {
             animate={{ opacity: condensed ? 0 : 1, width: condensed ? 0 : "auto" }}
             transition={{ duration: 0.3, ease: EASE }}
           >
-            Telemetry v4.2
+            {t("header.telemetry")}
           </motion.span>
         </Link>
 
@@ -94,7 +97,7 @@ export default function Header() {
                       : "text-on-surface-variant hover:text-on-surface"
                   }`}
                 >
-                  {l.label}
+                  {t(l.key)}
                 </span>
               </NavLink>
             );
@@ -108,7 +111,7 @@ export default function Header() {
               <span className="w-2 h-2 rounded-full bg-secondary sun-pulse" />
             </span>
             <ShinyText
-              text="NASA & PVWatts Synced"
+              text={t("header.synced")}
               speed={4}
               color="#44474d"
               shineColor="#0050cc"
@@ -116,16 +119,7 @@ export default function Header() {
             />
           </div>
 
-          <motion.button
-            type="button"
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-space-xs px-space-sm py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-label-sm text-label-sm uppercase tracking-wider"
-          >
-            <span className="material-symbols-outlined text-[16px]">language</span>
-            <span>EN (US)</span>
-            <span className="material-symbols-outlined text-[16px]">expand_more</span>
-          </motion.button>
+          <LanguageSwitcher />
 
           <motion.img
             alt="Profile"

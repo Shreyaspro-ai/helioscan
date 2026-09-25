@@ -1,9 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import Reveal from "../components/Reveal";
 import Flag from "../components/Flag";
 import CountUp from "../components/CountUp";
 import { useSite } from "../state/SiteContext";
+import { useT } from "../i18n";
+import { downloadReportPdf } from "../lib/reportPdf";
+import { useState } from "react";
 import { getCountry } from "../data/countries";
 
 const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -44,7 +47,84 @@ export default function DetailReport() {
   const { selected, sites, origin, hasScan, selectSite, config } = useSite();
   if (!hasScan || !selected) return <NoScan />;
 
+  const t = useT();
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const flash = (msg) => {
+    setToast(msg);
+    window.clearTimeout(flash._id);
+    flash._id = window.setTimeout(() => setToast(null), 2600);
+  };
+
   const s = selected;
+
+  /* Generates a real PDF from the scan data — see lib/reportPdf.js for why it
+     is laid out rather than rasterised. */
+  const onDownloadPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      // Yield a frame so the button can paint its busy state before jsPDF
+      // blocks the main thread building the document.
+      await new Promise((r) => requestAnimationFrame(r));
+      const name = downloadReportPdf(s, origin, config);
+      flash(name);
+    } catch (err) {
+      flash("PDF failed: " + (err?.message || "unknown error"));
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  /* Share sheet where the platform has one, clipboard everywhere else. The
+     link carries the site rank so the recipient opens the same parcel. */
+  const onShare = async () => {
+    const url = `${window.location.origin}/report?site=${s.rank}`;
+    const payload = {
+      title: `HelioScan — ${s.parcelName}`,
+      text: `HelioScore ${s.score}/100 · ${Math.round(s.annualKwh).toLocaleString()} kWh/yr`,
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(payload);
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      flash(t("report.copied"));
+    } catch (err) {
+      if (err?.name === "AbortError") return; // user dismissed the share sheet
+      flash("Could not share — copy the address bar instead.");
+    }
+  };
+
+  /* No backend to book against, so this composes the enquiry the user would
+     otherwise have to write by hand, prefilled with the site's real figures. */
+  const onSurvey = () => {
+    const place = [s.road, s.area, s.locality].filter(Boolean).join(", ");
+    const subject = `Site survey request — ${s.parcelName} (${s.postcode || "site"})`;
+    const body = [
+      "Requesting an on-site EPC survey for the parcel below.",
+      "",
+      `Site:        ${s.parcelName}`,
+      `Location:    ${place || "—"}`,
+      `Postal code: ${s.postcode || "—"}`,
+      `Coordinates: ${s.lat.toFixed(5)}, ${s.lng.toFixed(5)}`,
+      "",
+      `HelioScore:      ${s.score}/100`,
+      `Array capacity:  ${s.capacityKwp} kWp`,
+      `Annual output:   ${Math.round(s.annualKwh).toLocaleString()} kWh`,
+      `Specific yield:  ${Math.round(s.specificYield).toLocaleString()} kWh/kWp`,
+      `Optimal tilt:    ${s.tilt}° at ${s.azimuth}° azimuth`,
+      `Payback:         ${s.payback ?? "—"} years`,
+      "",
+      "Figures modelled by HelioScan from NASA POWER climatology and Copernicus",
+      "elevation data. They are a pre-feasibility estimate, not a survey.",
+    ].join("\n");
+    window.location.href =
+      `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
   const country = origin?.country ? getCountry(origin.country) : null;
   const next = sites.find((x) => x.id !== s.id && x.rank === s.rank + 1) || sites.find((x) => x.id !== s.id);
   const peakKwh = Math.max(...(s.monthlyKwh.length ? s.monthlyKwh : [1]));
@@ -58,14 +138,33 @@ export default function DetailReport() {
 
   return (
     <Reveal.Page className="w-full pt-16 min-h-[calc(100vh-4rem)]">
+      {/* Confirms the outcome of PDF / share, which otherwise complete with no
+          visible feedback at all. */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1300] flex items-center gap-space-sm px-space-lg py-3 rounded-full glass-strong glass-edge shadow-xl"
+          >
+            <span className="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+            <span className="font-label-lg text-label-lg text-on-surface">{toast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col w-full">
         {/* Top Telemetry Micro-Bar & Quick Traversal */}
         <section className="w-full px-margin py-space-sm bg-surface-container-low" data-reveal-group="">
           <div className="max-w-7xl mx-auto flex items-center justify-between text-body-sm">
             <div className="flex items-center gap-space-xs font-label-md text-label-md">
-              <a className="text-on-surface-variant hover:text-on-surface transition-colors" href="#">
-                {"Results"}
-              </a>
+              <Link viewTransition to="/results" className="text-on-surface-variant hover:text-on-surface transition-colors">
+                {t("report.backToResults")}
+              </Link>
               <span className="text-outline-variant">
                 {"/"}
               </span>
@@ -73,14 +172,19 @@ export default function DetailReport() {
                 {"Spot #" + s.rank + ": " + s.parcelName}
               </span>
             </div>
-            <a className="inline-flex items-center gap-1 font-label-md text-label-md text-secondary hover:text-on-surface transition-colors font-semibold" href="#">
+            <button
+              type="button"
+              disabled={!next}
+              onClick={() => next && selectSite(next.id)}
+              className="inline-flex items-center gap-1 font-label-md text-label-md text-secondary hover:text-on-surface transition-colors font-semibold disabled:opacity-40 disabled:cursor-default"
+            >
               <span className="">
-                {next ? "Next: Spot #" + next.rank : "Only candidate"}
+                {next ? t("report.next", { n: next.rank }) : t("report.onlyCandidate")}
               </span>
               <span className="material-symbols-outlined text-sm">
                 {"arrow_forward"}
               </span>
-            </a>
+            </button>
           </div>
         </section>
         {/* Section 1: Location Summary Header Bento */}
@@ -609,20 +713,20 @@ export default function DetailReport() {
               </p>
             </div>
             <div className="flex items-center gap-space-sm">
-              <button className="px-space-lg py-space-sm bg-tertiary-fixed-dim hover:bg-tertiary-fixed text-primary font-label-lg text-label-lg font-bold rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-2" type="button" data-reveal="">
+              <button className="px-space-lg py-space-sm bg-tertiary-fixed-dim hover:bg-tertiary-fixed text-primary font-label-lg text-label-lg font-bold rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-2" type="button" onClick={onDownloadPdf} disabled={pdfBusy} data-reveal="">
                 <span className="material-symbols-outlined text-base">
                   {"picture_as_pdf"}
                 </span>
                 <span className="">
-                  {"Download Full PDF Dossier"}
+                  {pdfBusy ? t("report.preparing") : t("report.download")}
                 </span>
               </button>
-              <button className="px-space-md py-space-sm glass glass-edge glass-lens glass-hover hover:bg-surface text-on-surface font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-2" type="button" data-reveal="">
+              <button className="px-space-md py-space-sm glass glass-edge glass-lens glass-hover hover:bg-surface text-on-surface font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-2" type="button" onClick={onShare} data-reveal="">
                 <span className="material-symbols-outlined text-base">
                   {"share"}
                 </span>
                 <span className="">
-                  {"Share Report Link"}
+                  {t("report.share")}
                 </span>
               </button>
             </div>
@@ -644,41 +748,54 @@ export default function DetailReport() {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-space-sm">
               {/* Primary Solar Yellow CTA */}
-              <button className="px-space-lg py-space-sm bg-tertiary-fixed-dim hover:bg-tertiary-fixed text-primary font-label-lg text-label-lg font-bold rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-2" type="button" data-reveal="">
+              <button className="px-space-lg py-space-sm bg-tertiary-fixed-dim hover:bg-tertiary-fixed text-primary font-label-lg text-label-lg font-bold rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-2" type="button" onClick={onDownloadPdf} disabled={pdfBusy} data-reveal="">
                 <span className="material-symbols-outlined text-base">
                   {"picture_as_pdf"}
                 </span>
                 <span className="">
-                  {"Download Full PDF Dossier"}
+                  {pdfBusy ? t("report.preparing") : t("report.download")}
                 </span>
               </button>
               {/* Electric Azure Action */}
-              <button className="px-space-md py-space-sm bg-secondary hover:bg-secondary-container text-on-secondary font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-2" type="button" data-reveal="">
+              <button className="px-space-md py-space-sm bg-secondary hover:bg-secondary-container text-on-secondary font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-2" type="button" onClick={onShare} data-reveal="">
                 <span className="material-symbols-outlined text-base">
                   {"share"}
                 </span>
                 <span className="">
-                  {"Share Report Link"}
+                  {t("report.share")}
                 </span>
               </button>
               {/* Deep Navy Action */}
-              <button className="px-space-md py-space-sm bg-primary-container hover:bg-inverse-surface text-on-primary font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-2" type="button" data-reveal="">
+              <button className="px-space-md py-space-sm bg-primary-container hover:bg-inverse-surface text-on-primary font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-2" type="button" onClick={onSurvey} data-reveal="">
                 <span className="material-symbols-outlined text-base">
                   {"engineering"}
                 </span>
                 <span className="">
-                  {"Schedule EPC Site Survey"}
+                  {t("report.survey")}
                 </span>
               </button>
               {/* Next Location Link */}
-              <a className="px-space-md py-space-sm glass glass-edge glass-lens glass-hover hover:bg-surface text-on-surface font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-1" href="#" data-reveal="">
-                <span className="">
-                  {next ? "Jump to Spot #" + next.rank : "Back to results"}
-                </span>
-                <span className="material-symbols-outlined text-base">
-                  {"arrow_forward"}
-                </span>
-              </a>
+              {next ? (
+                <button
+                  type="button"
+                  onClick={() => selectSite(next.id)}
+                  className="px-space-md py-space-sm glass glass-edge glass-lens glass-hover hover:bg-surface text-on-surface font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-1"
+                  data-reveal=""
+                >
+                  <span>{t("report.jump", { n: next.rank })}</span>
+                  <span className="material-symbols-outlined text-base">arrow_forward</span>
+                </button>
+              ) : (
+                <Link
+                  viewTransition
+                  to="/results"
+                  className="px-space-md py-space-sm glass glass-edge glass-lens glass-hover hover:bg-surface text-on-surface font-label-lg text-label-lg font-semibold rounded-full shadow-sm transition-all flex items-center gap-1"
+                  data-reveal=""
+                >
+                  <span>{t("report.backToResults")}</span>
+                  <span className="material-symbols-outlined text-base">arrow_forward</span>
+                </Link>
+              )}
             </div>
           </div>
         </section>

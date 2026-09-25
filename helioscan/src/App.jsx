@@ -10,6 +10,7 @@ import { HAS_VIEW_TRANSITIONS } from "./components/Reveal";
 import Wallpaper from "./components/Wallpaper";
 import GlassPointer from "./components/GlassPointer";
 import { SiteProvider } from "./state/SiteContext";
+import { I18nProvider } from "./i18n";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -47,6 +48,7 @@ function RouteHost() {
  */
 export default function App() {
   return (
+    <I18nProvider>
     <SiteProvider>
       <MotionConfig reducedMotion="user">
         <ClickSpark
@@ -66,5 +68,6 @@ export default function App() {
         </ClickSpark>
       </MotionConfig>
     </SiteProvider>
+    </I18nProvider>
   );
 }
