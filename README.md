@@ -19,6 +19,11 @@ npm run dev      # http://localhost:5173
 No API keys, no `.env`, no backend. Every data source it uses is keyless and
 CORS-enabled, so the browser calls them directly.
 
+> **Building on this with an AI tool?** Read [AGENTS.md](AGENTS.md) first — it's
+> an inventory of what already exists (map picker, postal validation, 199-country
+> dataset, solar model, PDF/CSV export, i18n) so none of it gets rebuilt from
+> scratch, plus the stack constraints and the bugs not to reintroduce.
+
 ## What's here
 
 | Path | |

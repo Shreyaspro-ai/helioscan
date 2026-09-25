@@ -235,34 +235,3 @@ export function rankLabel(score) {
   return { label: "Marginal", tone: "low" };
 }
 
-/**
- * Candidate parcels for a chosen point.
- *
- * The first candidate IS the selected point — that is the site the user asked
- * about. The other two are regional alternatives.
- *
- * Their spacing is not cosmetic: NASA POWER serves a 0.5° x 0.5° grid, roughly
- * 55 km, so candidates only a few km apart resolve to the *same* cell and come
- * back with byte-identical climate, making the comparison meaningless. The
- * offsets below are ~0.45-0.75° so each parcel lands in a distinct cell and the
- * ranking reflects real differences in the data.
- *
- * Offsets are fixed rather than random, so a given site always yields the same
- * three candidates — a report that changed on reload would be worthless.
- */
-export function candidateOffsets(lat, lng) {
-  // Converge the longitude spread near the poles so offsets stay sane.
-  const lngScale = 1 / Math.max(0.35, Math.cos((lat * Math.PI) / 180));
-  const clampLat = (v) => clamp(v, -89.5, 89.5);
-  const wrapLng = (v) => ((((v + 180) % 360) + 360) % 360) - 180;
-
-  return [
-    { name: "Selected Site", suffix: "SITE-0", dLat: 0, dLng: 0 },
-    { name: "Northern Ridge", suffix: "402-A", dLat: 0.52, dLng: 0.48 * lngScale },
-    { name: "Southern Basin", suffix: "118-C", dLat: -0.58, dLng: 0.62 * lngScale },
-  ].map((o) => ({
-    ...o,
-    lat: round(clampLat(lat + o.dLat), 4),
-    lng: round(wrapLng(lng + o.dLng), 4),
-  }));
-}
